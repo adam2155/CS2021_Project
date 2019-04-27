@@ -25,30 +25,12 @@ LR = 1e-3
 env = gym.make('Pendulum-v0')
 env.reset()
 # Number of goal steps - every frame where we're within bounds is a +1
-goal_steps = 10
+goal_steps = 50
 # score_requirement = -16.2736044
 score_requirement = -50
 # If you make it too big, you brute force every answer
-initial_games = 10000
+initial_games = 1000
 print("Action Space:", env.action_space)
-
-def some_random_games_first():
-	for episode in range(5):
-		env.reset()
-		for t in range(goal_steps):
-			# renders environment every step
-			# comment out if you want this to go faster
-			env.render()
-			# Generates a random action in the environment
-			action = env.action_space.sample()
-			# observation - pole position, cart position, etc
-			# reward - 1 or a 0
-			# done - game is over
-			observation, reward, done, info = env.step(action)
-			if done:
-				break
-
-some_random_games_first()
 
 # Here we generate our training data
 def initial_population():
@@ -63,7 +45,7 @@ def initial_population():
 		game_memory = []
 		prev_observation = []
 		for _ in range(goal_steps):
-			action = [random.randrange(0,2)]
+			action = [random.randrange(-2,2)]
 			observation, reward, done, info = env.step(action)
 
 			# If we had a winning game, we save it to game_memory
@@ -78,12 +60,12 @@ def initial_population():
 			if done:
 				break
 
-		if score >= score_requirement:
+		if score <= score_requirement:
 			accepted_scores.append(score)
 			for data in game_memory:
-				if data[1] == [1]:
+				if data[1][0] >= 0:
 					output = [0,1]
-				elif data[1] == [0]:
+				elif data[1][0] <= 0:
 					output = [1,0]
 				training_data.append([data[0], output])
 
@@ -127,7 +109,7 @@ def neural_network_model(input_size):
 	network = fully_connected(network, 128, activation = 'relu')
 	network = dropout(network, 0.8)
 
-	network = fully_connected(network, 3, activation = 'softmax')
+	network = fully_connected(network, 2, activation = 'softmax')
 	network = regression(network, optimizer = 'adam', learning_rate = LR, loss = 'categorical_crossentropy', name = 'targets')
 	model = tflearn.DNN(network, tensorboard_dir='log')
 
@@ -166,7 +148,7 @@ for each_game in range(10):
 		env.render()
 		# If we don't see a frame
 		if len(prev_obs) == 0:
-			action = [random.randrange(0,2)]
+			action = [random.randrange(-2,2)]
 		# If we see a frame
 		else:
 			# We take the zeroeth index
